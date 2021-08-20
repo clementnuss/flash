@@ -10,6 +10,15 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// EncoderType is a zap encoder.
+type EncoderType int
+
+// All supported encoder types.
+const (
+	Console EncoderType = iota
+	JSON
+)
+
 // Logger is the flash logger which embeds a `zap.SugaredLogger`.
 type Logger struct {
 	*zap.SugaredLogger
@@ -82,6 +91,13 @@ func WithPrometheus(appName string, registry prometheus.Registerer) Option {
 	}
 }
 
+// WithEncoder configures the zap encoder.
+func WithEncoder(e EncoderType) Option {
+	return func(c *config) {
+		c.encoder = e
+	}
+}
+
 // New creates a new Logger. If no options are specified, stacktraces and color output are disabled and
 // the confgured level is `InfoLevel`.
 func New(opts ...Option) *Logger {
@@ -90,6 +106,7 @@ func New(opts ...Option) *Logger {
 
 	cfg := config{
 		disableStacktrace: true,
+		encoder:           Console,
 	}
 
 	for _, opt := range opts {
@@ -99,12 +116,18 @@ func New(opts ...Option) *Logger {
 	zapConfig := zap.NewProductionConfig()
 	zapConfig.DisableStacktrace = cfg.disableStacktrace
 	zapConfig.Sampling = nil
-	zapConfig.Encoding = "console"
 	zapConfig.DisableCaller = cfg.disableCaller
 	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	zapConfig.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
 	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	zapConfig.Level = atom
+
+	switch cfg.encoder {
+	case Console:
+		zapConfig.Encoding = "console"
+	case JSON:
+		zapConfig.Encoding = "json"
+	}
 
 	if cfg.enableColor {
 		zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
@@ -213,4 +236,5 @@ type config struct {
 	isDebug           bool
 	hook              func(zapcore.Entry) error
 	sinks             []string
+	encoder           EncoderType
 }
