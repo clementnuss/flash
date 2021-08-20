@@ -113,6 +113,10 @@ func New(opts ...Option) *Logger {
 		opt(&cfg)
 	}
 
+	if cfg.encoder != Console {
+		cfg.enableColor = false
+	}
+
 	zapConfig := zap.NewProductionConfig()
 	zapConfig.DisableStacktrace = cfg.disableStacktrace
 	zapConfig.Sampling = nil
